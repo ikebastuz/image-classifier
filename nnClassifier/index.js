@@ -1,6 +1,7 @@
 const fs = require("fs");
 const { resolve } = require("path");
 const util = require("util");
+const { performance } = require("perf_hooks");
 
 const { createCanvas, Image } = require("canvas");
 
@@ -16,43 +17,57 @@ const stat = util.promisify(fs.stat);
 
 class imgClassifier {
   constructor() {
+    this.knn = false;
+    this.mobilenet = false;
     this.IMAGE_SIZE = 227;
     this.TOPK = 10;
-    this.myGroups = [];
-    this.myIncomingClassifier = [];
+    this.layersGroups = [];
+    this.loadingClassifier = [];
     this.classifier = knnClassifier.create();
 
     this.stats = {};
 
-    this.loadModel();
+    this.initModel();
   }
 
-  async loadModel(forTraining = false) {
+  async initModel() {
+    if (this.mobilenet) this.mobilenet.dispose();
     const mobileModelPath = "models/mobileNet/mobilenet.json";
     this.mobilenet = new mobilenetModule.MobileNet(1, 1);
     this.mobilenet.mobileModelPath = `file://${mobileModelPath}`;
     await this.mobilenet.load();
-
-    if (forTraining) {
-      this.knn = await knnClassifier.create();
-      await this.trainData();
-      this.saveClassifier(this.knn, "cat_dog_model");
-    } else {
-      this.knn = await this.loadClassifier(
-        "models/catdogmodel_2000/model.json"
-      );
-      await this.predictData();
-    }
   }
 
-  async predictData() {
-    console.log("PREDICTING Dataset 0");
-    await this.predictPath("./dataset/test/a", "0");
+  async initClassifier(classifierName = false) {
+    if (this.knn) {
+      this.knn.dispose();
+      this.knn = null;
+      this.layersGroups = [];
+      this.loadingClassifier = [];
+    }
+    if (!classifierName) {
+      this.knn = await knnClassifier.create();
+    } else {
+      this.knn = await this.loadClassifier(classifierName);
+    }
 
-    console.log("PREDICTING Dataset 1");
-    await this.predictPath("./dataset/test/b", "1");
+    return classifierName
+      ? `classifier ${classifierName} loaded`
+      : "classifier initialized";
+  }
 
-    console.log(this.stats);
+  async testModel(imageBatch) {
+    if (!this.knn || !this.mobilenet)
+      return { data: "Models not loaded", error: true };
+
+    this.stats = {};
+    const testStart = performance.now();
+
+    for (let i = 0; i < imageBatch.length; i++) {
+      console.log(`Testing dataset ${imageBatch[i].class}`);
+      await this.predictPath(imageBatch[i].path, imageBatch[i].class);
+    }
+
     const accur = Object.values(this.stats).reduce(
       (acc, curr) => {
         const correctUpd = acc.correct + curr.correct;
@@ -66,18 +81,47 @@ class imgClassifier {
       },
       { correct: 0, error: 0, accur: 0 }
     ).accur;
-    console.log(`Accuracy: ${accur}%`);
+
+    const testEnd = performance.now();
+    const testTime = `${((testEnd - testStart) / 1000).toFixed(2)} secs`;
+
+    return {
+      data: {
+        testTime,
+        accuracy: `${accur}%`,
+        stats: this.stats
+      }
+    };
   }
 
-  async trainData() {
-    await this.trainPath("./dataset/train/a", 0);
-    console.log("TRAINED A");
-    await this.trainPath("./dataset/train/b", 1);
-    console.log("TRAINED B");
+  async trainModel(modelName, imageBatch) {
+    if (!this.knn || !this.mobilenet)
+      return { data: "Models not loaded", error: true };
+
+    const trainStart = performance.now();
+
+    for (let i = 0; i < imageBatch.length; i++) {
+      console.log(`Training dataset ${imageBatch[i].class}...`);
+      await this.trainPath(imageBatch[i].path, imageBatch[i].class);
+      console.log(`Done`);
+    }
 
     const exampleCount = this.knn.getClassExampleCount();
     console.log(`EXAMPLES:`);
     console.log(exampleCount);
+
+    console.log(`Saving model ${modelName}`);
+    await this.saveClassifier(modelName);
+
+    const trainEnd = performance.now();
+    const trainTime = `${((trainEnd - trainStart) / 1000).toFixed(2)} secs`;
+
+    return {
+      data: {
+        msg: `Successfully trained and saved as ${modelName}`,
+        trainTime
+      }
+    };
   }
 
   async getFileNames(path) {
@@ -113,11 +157,15 @@ class imgClassifier {
   }
 
   async predictPath(path, idx) {
+    if (!this.knn || !this.mobilenet)
+      return { data: "Models not loaded", error: true };
+
     const imageNames = await this.getFileNames(path);
     for (let i = 0; i < imageNames.length; i++) {
       const prediction = await this.predictImage(`${imageNames[i]}`);
+      if (prediction.error) continue;
       if (!this.stats[idx]) this.stats[idx] = { correct: 0, error: 0 };
-      if (prediction.classIndex == idx) {
+      if (prediction.data.classIndex == idx) {
         this.stats[idx]["correct"]++;
       } else {
         this.stats[idx]["error"]++;
@@ -125,17 +173,20 @@ class imgClassifier {
     }
   }
 
-  async predictImage(imagePath) {
-    const img = await this.processImage(imagePath);
+  async predictImage(imageData) {
+    if (!this.knn || !this.mobilenet)
+      return { data: "Models not loaded", error: true };
+    const img = await this.processImage(imageData);
     const imgTf = tf.fromPixels(img);
     const inferLocal = () => this.mobilenet.infer(imgTf, "conv_preds");
     const logits = inferLocal();
+
     const prediction = await this.knn.predictClass(logits, this.TOPK);
     imgTf.dispose();
     if (logits != null) {
       logits.dispose();
     }
-    return prediction;
+    return { data: prediction };
   }
 
   async processImage(imageData) {
@@ -173,107 +224,101 @@ class imgClassifier {
     return { x, y };
   }
 
-  async classifierSaveWrapper(myPassedClassifier) {
-    let myLayerList = [];
-    myLayerList[0] = []; // for the input layer name as a string
-    myLayerList[1] = []; // for the input layer
-    myLayerList[2] = []; // for the concatenate layer name as a string
-    myLayerList[3] = []; // for the concatenate layer
+  async classifierSaveWrapper(passedClassifier) {
+    let layersList = [];
+    layersList[0] = []; // for the input layer name as a string
+    layersList[1] = []; // for the input layer
+    layersList[2] = []; // for the concatenate layer name as a string
+    layersList[3] = []; // for the concatenate layer
 
-    let myMaxClasses = myPassedClassifier.getNumClasses();
+    let maxClasses = passedClassifier.getNumClasses();
 
-    for (
-      let myClassifierLoop = 0;
-      myClassifierLoop < myMaxClasses;
-      myClassifierLoop++
-    ) {
-      myLayerList[0][myClassifierLoop] = `myInput_${myClassifierLoop}`; // input name as a string
+    for (let classIdx = 0; classIdx < maxClasses; classIdx++) {
+      layersList[0][classIdx] = `classIdx_${classIdx}`; // input name as a string
 
-      console.log(`define input for ${myClassifierLoop}`);
-      myLayerList[1][myClassifierLoop] = tf.input({
-        shape: myPassedClassifier.getClassifierDataset()[myClassifierLoop]
-          .shape[0],
-        name: myLayerList[1][myClassifierLoop]
+      console.log(`define input for ${classIdx}`);
+      layersList[1][classIdx] = tf.input({
+        shape: passedClassifier.getClassifierDataset()[classIdx].shape[0],
+        name: layersList[1][classIdx]
       });
 
-      console.log("define dense for: " + myClassifierLoop);
-      myLayerList[2][myClassifierLoop] = `myInput_${myClassifierLoop}_Dense1`; // concatenate as a string
-      myLayerList[3][myClassifierLoop] = tf.layers
-        .dense({ units: 1000, name: this.myGroups[myClassifierLoop] })
-        .apply(myLayerList[1][myClassifierLoop]); //Define concatenate layer
+      console.log("define dense for: " + classIdx);
+      layersList[2][classIdx] = `classIdx_${classIdx}_Dense`;
+      layersList[3][classIdx] = tf.layers
+        .dense({ units: 1000, name: this.layersGroups[classIdx] })
+        .apply(layersList[1][classIdx]);
     }
 
     console.log("Concatenate Paths");
-    const myConcatenate1 = tf.layers
-      .concatenate({ axis: 1, name: "myConcatenate1" })
-      .apply(myLayerList[3]); // send the entire list of dense
-    const myConcatenate1Dense4 = tf.layers
-      .dense({ units: 1, name: "myConcatenate1Dense4" })
-      .apply(myConcatenate1);
+    const concatLayer = tf.layers
+      .concatenate({ axis: 1, name: "concatLayer" })
+      .apply(layersList[3]);
+    const concatLayerDense = tf.layers
+      .dense({ units: 1, name: "concatLayerDense" })
+      .apply(concatLayer);
 
     console.log("Define Model");
-    const myClassifierModel = tf.model({
-      inputs: myLayerList[1],
-      outputs: myConcatenate1Dense4
+    const resultClassifierModel = tf.model({
+      inputs: layersList[1],
+      outputs: concatLayerDense
     });
-    myClassifierModel.summary();
-    myPassedClassifier.getClassifierDataset()[0].print(true);
+    resultClassifierModel.summary();
+    passedClassifier.getClassifierDataset()[0].print(true);
 
-    for (
-      let myClassifierLoop = 0;
-      myClassifierLoop < myMaxClasses;
-      myClassifierLoop++
-    ) {
-      const myInWeight = await myPassedClassifier.getClassifierDataset()[
-        myClassifierLoop
+    for (let classIdx = 0; classIdx < maxClasses; classIdx++) {
+      const myInWeight = await passedClassifier.getClassifierDataset()[
+        classIdx
       ];
-      myClassifierModel.layers[myClassifierLoop + myMaxClasses].setWeights([
+      resultClassifierModel.layers[classIdx + maxClasses].setWeights([
         myInWeight,
         tf.ones([1000])
       ]);
     }
 
-    return myClassifierModel;
+    return resultClassifierModel;
   }
 
-  async saveClassifier(classifier, modelName) {
-    const classifier = await this.classifierSaveWrapper(classifier); // pass global classifier
+  async saveClassifier(modelName) {
+    console.log("saving");
+    console.log(modelName);
+    const classifier = await this.classifierSaveWrapper(this.knn);
+    console.log(classifier);
     classifier.save(`file://models/${modelName}`);
     classifier.summary(null, null, x => console.log(x));
     console.log("Trained model successfully saved");
   }
 
-  async loadClassifier(modelPath) {
-    const loadedModel = await tf.loadModel(`file://${modelPath}`);
+  async loadClassifier(modelName) {
+    const loadedModel = await tf.loadModel(
+      `file://models/${modelName}/model.json`
+    );
     console.log(`loadedModel.layers.length : ${loadedModel.layers.length}`);
 
     const myMaxLayers = loadedModel.layers.length;
     const myDenseEnd = myMaxLayers - 2;
-    const myDenseStart = myDenseEnd / 2; // assume 0 = first layer: if 6 layers 0-1 input, 2-3 dense, 4 concatenate, 5 dense output
+    const myDenseStart = myDenseEnd / 2;
 
     for (
       let myWeightLoop = myDenseStart;
       myWeightLoop < myDenseEnd;
       myWeightLoop++
     ) {
-      console.log(
-        `loadedModel.layers[${myWeightLoop}].getWeights()[0].print(true)`
-      );
-
-      this.myIncomingClassifier[
-        myWeightLoop - myDenseStart
-      ] = loadedModel.layers[myWeightLoop].getWeights()[0];
-      this.myGroups[myWeightLoop - myDenseStart] =
+      this.loadingClassifier[myWeightLoop - myDenseStart] = loadedModel.layers[
+        myWeightLoop
+      ].getWeights()[0];
+      this.layersGroups[myWeightLoop - myDenseStart] =
         loadedModel.layers[myWeightLoop].name;
     }
+    /*
     console.log("Printing all the incoming classifiers");
-    for (let x = 0; x < this.myIncomingClassifier.length; x++) {
-      this.myIncomingClassifier[x].print(true);
+    for (let x = 0; x < this.loadingClassifier.length; x++) {
+      this.loadingClassifier[x].print(true);
     }
-    console.log("Activating Classifier");
+    */
 
+    console.log("Activating Classifier");
     this.classifier.dispose();
-    this.classifier.setClassifierDataset(this.myIncomingClassifier);
+    this.classifier.setClassifierDataset(this.loadingClassifier);
     console.log("Classifier loaded");
     return this.classifier;
   }
