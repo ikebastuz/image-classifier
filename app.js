@@ -1,6 +1,7 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const imgClassifier = require("./nnClassifier");
+const express = require('express');
+const bodyParser = require('body-parser');
+const imgClassifier = require('./nnClassifier');
+const { addImageToDataset } = require('./nnClassifier/utils');
 
 const app = express();
 
@@ -10,10 +11,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
+  res.header('Access-Control-Allow-Origin', '*');
   res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept'
   );
   next();
 });
@@ -25,7 +26,7 @@ app.use(function(req, res, next) {
     modelName: string (name of trained model. If empty - creates new classifier for training)
 */
 
-app.post("/loadModel", async function(req, res) {
+app.post('/loadModel', async function(req, res) {
   try {
     const classifierName = req.body.modelName ? req.body.modelName : false;
     const result = await imgClassifier.initClassifier(classifierName);
@@ -44,7 +45,7 @@ app.post("/loadModel", async function(req, res) {
     imageData: string (image path or base64 image string)
 */
 
-app.post("/predict", async function(req, res) {
+app.post('/predict', async function(req, res) {
   try {
     if (req.body.imageData) {
       const result = await imgClassifier.predictImage(req.body.imageData);
@@ -68,7 +69,7 @@ app.post("/predict", async function(req, res) {
       }
 */
 
-app.post("/trainBatch", async function(req, res) {
+app.post('/trainBatch', async function(req, res) {
   if (req.body.imageBatch) {
     try {
       const result = await imgClassifier.trainBatch(
@@ -94,12 +95,11 @@ app.post("/trainBatch", async function(req, res) {
       }
 */
 
-app.post("/trainImage", async function(req, res) {
+app.post('/trainImage', async function(req, res) {
   if (req.body.imageData) {
     try {
-      const result = await imgClassifier.trainImage(
-        JSON.parse(req.body.imageData)
-      );
+      await addImageToDataset(req.body.imageData);
+      const result = await imgClassifier.trainImage(req.body.imageData);
 
       console.log(result);
       res.send(result);
@@ -116,7 +116,7 @@ app.post("/trainImage", async function(req, res) {
     modelName: string (name of model to save)
 */
 
-app.post("/saveModel", async function(req, res) {
+app.post('/saveModel', async function(req, res) {
   if (req.body.modelName) {
     try {
       const result = await imgClassifier.saveModel(req.body.modelName);
@@ -140,7 +140,7 @@ app.post("/saveModel", async function(req, res) {
       }
 */
 
-app.post("/testModel", async function(req, res) {
+app.post('/testModel', async function(req, res) {
   if (req.body.imageBatch) {
     try {
       const imageFolders = JSON.parse(req.body.imageBatch);
@@ -150,10 +150,10 @@ app.post("/testModel", async function(req, res) {
         console.log(result);
         res.send(result);
       } else {
-        res.send({ data: "imageBatch is not an array" });
+        res.send({ data: 'imageBatch is not an array' });
       }
     } catch {
-      res.send({ data: "imageBatch is not a JSON" });
+      res.send({ data: 'imageBatch is not a JSON' });
     }
   }
 });

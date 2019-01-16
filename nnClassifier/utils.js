@@ -1,21 +1,34 @@
-const fs = require("fs");
-const util = require("util");
-const { resolve } = require("path");
-const { createCanvas, Image } = require("canvas");
+const fs = require('fs');
+const util = require('util');
+const { resolve } = require('path');
+const { createCanvas, Image } = require('canvas');
+const uuidv1 = require('uuid/v1');
 
 const stat = util.promisify(fs.stat);
 const readDir = util.promisify(fs.readdir);
+const saveImage = util.promisify(fs.writeFile);
+
+async function addImageToDataset(imageData) {
+  const base64Data = imageData.data.replace(/^data:image\/jpeg;base64,/, '');
+
+  await saveImage(
+    `trainset/${imageData.class}_${uuidv1()}.png`,
+    base64Data,
+    'base64'
+  );
+  return true;
+}
 
 async function getFileNames(path) {
   const subdirs = await readDir(path);
   const imageNames = await Promise.all(
-    subdirs.map(async subdir => {
+    subdirs.map(async (subdir) => {
       const res = resolve(path, subdir);
       return (await stat(res)).isDirectory() ? getFiles(res) : res;
     })
   );
 
-  return imageNames.filter(imageName =>
+  return imageNames.filter((imageName) =>
     imageName.match(/[a-zA-Z0-9\s_\\.\-\(\):]+(.jpg|.jpeg|.png)/i)
   );
 }
@@ -38,11 +51,11 @@ function getModelAccuracy(stats) {
 
 async function processImage(imageData, imageSize) {
   const canvas = createCanvas(imageSize.width, imageSize.height);
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext('2d');
   const img = new Image();
 
-  const promise = new Promise(resolve => {
-    img.crossOrigin = "";
+  const promise = new Promise((resolve) => {
+    img.crossOrigin = '';
     img.onload = () => {
       const { x, y } = getOffsets(img, imageSize);
       ctx.drawImage(img, x, y);
@@ -74,5 +87,6 @@ function getOffsets(img, imageSize) {
 module.exports = {
   getFileNames,
   getModelAccuracy,
-  processImage
+  processImage,
+  addImageToDataset
 };

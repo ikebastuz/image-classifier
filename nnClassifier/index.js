@@ -1,14 +1,14 @@
-const { performance } = require("perf_hooks");
+const { performance } = require('perf_hooks');
 
-const tf = require("@tensorflow/tfjs");
-require("@tensorflow/tfjs-node");
+const tf = require('@tensorflow/tfjs');
+require('@tensorflow/tfjs-node');
 //require("@tensorflow/tfjs-node-gpu");
-const mobilenetModule = require("@tensorflow-models/mobilenet");
+const mobilenetModule = require('@tensorflow-models/mobilenet');
 
-const Utils = require("./utils");
-const ClassifierModel = require("./model");
+const Utils = require('./utils');
+const ClassifierModel = require('./model');
 
-global.fetch = require("node-fetch");
+global.fetch = require('node-fetch');
 
 class imgClassifier {
   constructor() {
@@ -27,7 +27,7 @@ class imgClassifier {
 
   async initModel() {
     if (this.mobilenet) this.mobilenet.dispose();
-    const mobileModelPath = "models/mobileNet/mobilenet.json";
+    const mobileModelPath = 'models/mobileNet/mobilenet.json';
     this.mobilenet = new mobilenetModule.MobileNet(1, 1);
     this.mobilenet.mobileModelPath = `file://${mobileModelPath}`;
     await this.mobilenet.load();
@@ -46,12 +46,12 @@ class imgClassifier {
 
     return classifierName
       ? `classifier ${classifierName} loaded`
-      : "classifier initialized";
+      : 'classifier initialized';
   }
 
   async testModel(imageBatch) {
     if (!this.knn || !this.mobilenet)
-      return { data: "Models not loaded", error: true };
+      return { data: 'Models not loaded', error: true };
 
     this.stats = {};
     const testStart = performance.now();
@@ -77,7 +77,7 @@ class imgClassifier {
 
   async trainBatch(imageBatch) {
     if (!this.knn || !this.mobilenet)
-      return { data: "Models not loaded", error: true };
+      return { data: 'Models not loaded', error: true };
 
     const trainStart = performance.now();
 
@@ -99,8 +99,9 @@ class imgClassifier {
 
   async trainImage(imageData) {
     if (!this.knn || !this.mobilenet)
-      return { data: "Models not loaded", error: true };
+      return { data: 'Models not loaded', error: true };
 
+    console.log(imageData);
     await this.addImageToClass(imageData.data, imageData.class);
 
     const exampleCount = this.knn.getClassExampleCount();
@@ -141,7 +142,7 @@ class imgClassifier {
   async addImageToClass(imageData, idx) {
     const img = await Utils.processImage(imageData, this.IMAGE_SIZE);
     const imgTf = tf.fromPixels(img);
-    const inferLocal = img => this.mobilenet.infer(img, "conv_preds");
+    const inferLocal = (img) => this.mobilenet.infer(img, 'conv_preds');
     const logits = inferLocal(imgTf);
     this.knn.addExample(logits, Number(idx));
 
@@ -153,7 +154,7 @@ class imgClassifier {
 
   async predictPath(path, idx) {
     if (!this.knn || !this.mobilenet)
-      return { data: "Models not loaded", error: true };
+      return { data: 'Models not loaded', error: true };
 
     const imageNames = await Utils.getFileNames(path);
     for (let i = 0; i < imageNames.length; i++) {
@@ -161,19 +162,19 @@ class imgClassifier {
       if (prediction.error) continue;
       if (!this.stats[idx]) this.stats[idx] = { correct: 0, error: 0 };
       if (prediction.data.classIndex == idx) {
-        this.stats[idx]["correct"]++;
+        this.stats[idx]['correct']++;
       } else {
-        this.stats[idx]["error"]++;
+        this.stats[idx]['error']++;
       }
     }
   }
 
   async predictImage(imageData) {
     if (!this.knn || !this.mobilenet)
-      return { data: "Models not loaded", error: true };
+      return { data: 'Models not loaded', error: true };
     const img = await Utils.processImage(imageData, this.IMAGE_SIZE);
     const imgTf = tf.fromPixels(img);
-    const inferLocal = () => this.mobilenet.infer(imgTf, "conv_preds");
+    const inferLocal = () => this.mobilenet.infer(imgTf, 'conv_preds');
     const logits = inferLocal();
 
     const prediction = await this.knn.predictClass(logits, this.TOPK);
