@@ -1,8 +1,8 @@
 const { performance } = require('perf_hooks');
 
 const tf = require('@tensorflow/tfjs');
-require('@tensorflow/tfjs-node');
-//require("@tensorflow/tfjs-node-gpu");
+//require('@tensorflow/tfjs-node');
+require('@tensorflow/tfjs-node-gpu');
 const mobilenetModule = require('@tensorflow-models/mobilenet');
 
 const Utils = require('./utils');

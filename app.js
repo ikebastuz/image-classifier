@@ -152,7 +152,7 @@ app.post('/testModel', async function(req, res) {
       } else {
         res.send({ data: 'imageBatch is not an array' });
       }
-    } catch {
+    } catch (e) {
       res.send({ data: 'imageBatch is not a JSON' });
     }
   }
