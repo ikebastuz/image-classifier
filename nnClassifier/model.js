@@ -1,12 +1,12 @@
-const tf = require("@tensorflow/tfjs");
-require("@tensorflow/tfjs-node");
-const knnClassifier = require("@tensorflow-models/knn-classifier");
+const tf = require('@tensorflow/tfjs');
+require('@tensorflow/tfjs-node');
+const knnClassifier = require('@tensorflow-models/knn-classifier');
 
 async function saveClassifier(modelName, knn) {
   const classifier = await classifierSaveWrapper(knn);
   classifier.save(`file://models/${modelName}`);
-  classifier.summary(null, null, x => console.log(x));
-  console.log("Trained model successfully saved");
+  classifier.summary(null, null, (x) => console.log(x));
+  console.log('Trained model successfully saved');
 }
 
 async function classifierSaveWrapper(passedClassifier) {
@@ -28,22 +28,22 @@ async function classifierSaveWrapper(passedClassifier) {
       name: layersList[1][classIdx]
     });
 
-    console.log("define dense for: " + classIdx);
+    console.log('define dense for: ' + classIdx);
     layersList[2][classIdx] = `classIdx_${classIdx}_Dense`;
     layersList[3][classIdx] = tf.layers
       .dense({ units: 1000, name: layersGroups[classIdx] })
       .apply(layersList[1][classIdx]);
   }
 
-  console.log("Concatenate Paths");
+  console.log('Concatenate Paths');
   const concatLayer = tf.layers
-    .concatenate({ axis: 1, name: "concatLayer" })
+    .concatenate({ axis: 1, name: 'concatLayer' })
     .apply(layersList[3]);
   const concatLayerDense = tf.layers
-    .dense({ units: 1, name: "concatLayerDense" })
+    .dense({ units: 1, name: 'concatLayerDense' })
     .apply(concatLayer);
 
-  console.log("Define Model");
+  console.log('Define Model');
   const resultClassifierModel = tf.model({
     inputs: layersList[1],
     outputs: concatLayerDense
@@ -94,15 +94,15 @@ async function loadClassifier(modelName) {
   }
   */
 
-  console.log("Activating Classifier");
+  console.log('Activating Classifier');
   classifier.dispose();
   classifier.setClassifierDataset(loadingClassifier);
-  console.log("Classifier loaded");
+  console.log('Classifier loaded');
   return classifier;
 }
 
 async function createEmptyClassifier() {
-  console.log("creating");
+  console.log('creating');
   const classifier = await knnClassifier.create();
   return classifier;
 }
