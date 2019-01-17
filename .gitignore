@@ -1,6 +1,6 @@
 /node_modules
 /.DS_Store
 /dataset*
-/trainset
-/testset
+/trainset*
+/testset*
 /package-lock.json

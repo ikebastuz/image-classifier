@@ -8,7 +8,7 @@ const mobilenetModule = require('@tensorflow-models/mobilenet');
 const Utils = require('./utils');
 const ClassifierModel = require('./model');
 
-global.fetch = require('node-fetch');
+//global.fetch = require('node-fetch');
 
 class imgClassifier {
   constructor() {
@@ -29,7 +29,7 @@ class imgClassifier {
     if (this.mobilenet) this.mobilenet.dispose();
     const mobileModelPath = 'models/mobileNet/mobilenet.json';
     this.mobilenet = new mobilenetModule.MobileNet(1, 1);
-    this.mobilenet.mobileModelPath = `file://${mobileModelPath}`;
+    this.mobilenet.path = `file://${mobileModelPath}`;
     await this.mobilenet.load();
   }
 
@@ -80,7 +80,6 @@ class imgClassifier {
       return { data: 'Models not loaded', error: true };
 
     const trainStart = performance.now();
-
     await this.trainPath(imageBatch.path, imageBatch.class);
 
     const exampleCount = this.knn.getClassExampleCount();
