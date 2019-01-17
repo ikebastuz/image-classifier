@@ -2,5 +2,9 @@
 /.DS_Store
 /dataset*
 /trainset*
+<<<<<<< HEAD
 /testset*
+=======
+/testset
+>>>>>>> 699bb7e021f26c34f096e508bf176280b42182b3
 /package-lock.json
