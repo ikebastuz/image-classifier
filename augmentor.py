@@ -1,22 +1,27 @@
 import Augmentor
 import shutil
 
-dataPath = "trainset/1"
+dataPath = "trainset/sum_1_2"
 
-p_flip = Augmentor.Pipeline(dataPath)
-p_flip.flip_left_right(probability=1)
-p_flip.process()
+p = Augmentor.Pipeline(dataPath)
 
-p_zoom = Augmentor.Pipeline(dataPath)
-p_zoom.zoom(probability=1, min_factor=1.05, max_factor=1.2)
-p_zoom.process()
+p.flip_left_right(probability=1)
+p.process()
 
-p_zoom_flip = Augmentor.Pipeline(dataPath)
-p_zoom_flip.flip_left_right(probability=1)
-p_zoom_flip.zoom(probability=1, min_factor=1.05, max_factor=1.2)
-p_zoom_flip.process()
+p.flip_top_bottom(probability=1)
+p.process()
 
-shutil.move(dataPath + '/output', dataPath + '_aug')
+p.rotate90(probability=1)
+p.process()
+
+p.rotate270(probability=1)
+p.process()
+
+p.zoom(probability=1, min_factor=1.05, max_factor=1.2)
+p.process()
+
+
+shutil.move(dataPath + '/output', dataPath + '_aug360')
 '''
 # Testset
 test_pipe = Augmentor.Pipeline(dataPath)

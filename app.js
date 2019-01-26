@@ -1,7 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const imgClassifier = require('./nnClassifier');
-const { addImageToDataset } = require('./nnClassifier/utils');
+const knnClassifier = require('./knnClassifier');
+const { addImageToDataset } = require('./utils');
+const path = require('path');
 
 const app = express();
 
@@ -19,8 +20,10 @@ app.use(function(req, res, next) {
   next();
 });
 
+app.use(express.static(path.join(__dirname, 'models')));
+
 /*  
-  @route    POST /loadModel
+  @route    POST /loadModel4
   @desc     Load classifier into memory.
   @params   
     modelName: string (name of trained model. If empty - creates new classifier for training)
@@ -29,7 +32,7 @@ app.use(function(req, res, next) {
 app.post('/loadModel', async function(req, res) {
   try {
     const classifierName = req.body.modelName ? req.body.modelName : false;
-    const result = await imgClassifier.initClassifier(classifierName);
+    const result = await knnClassifier.initClassifier(classifierName);
 
     console.log(result);
     res.send({ data: result });
@@ -48,7 +51,7 @@ app.post('/loadModel', async function(req, res) {
 app.post('/predict', async function(req, res) {
   try {
     if (req.body.imageData) {
-      const result = await imgClassifier.predictImage(req.body.imageData);
+      const result = await knnClassifier.predictImage(req.body.imageData);
 
       console.log(result);
       res.send(result);
@@ -72,7 +75,7 @@ app.post('/predict', async function(req, res) {
 app.post('/trainBatch', async function(req, res) {
   if (req.body.imageBatch) {
     try {
-      const result = await imgClassifier.trainBatch(
+      const result = await knnClassifier.trainBatch(
         JSON.parse(req.body.imageBatch)
       );
 
@@ -99,7 +102,7 @@ app.post('/trainImage', async function(req, res) {
   if (req.body.imageData) {
     try {
       await addImageToDataset(req.body.imageData);
-      const result = await imgClassifier.trainImage(req.body.imageData);
+      const result = await knnClassifier.trainImage(req.body.imageData);
 
       console.log(result);
       res.send(result);
@@ -119,7 +122,7 @@ app.post('/trainImage', async function(req, res) {
 app.post('/saveModel', async function(req, res) {
   if (req.body.modelName) {
     try {
-      const result = await imgClassifier.saveModel(req.body.modelName);
+      const result = await knnClassifier.saveModel(req.body.modelName);
 
       console.log(result);
       res.send(result);
@@ -145,7 +148,7 @@ app.post('/testModel', async function(req, res) {
     try {
       const imageFolders = JSON.parse(req.body.imageBatch);
       if (Array.isArray(imageFolders)) {
-        const result = await imgClassifier.testModel(imageFolders);
+        const result = await knnClassifier.testModel(imageFolders);
 
         console.log(result);
         res.send(result);
