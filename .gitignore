@@ -4,6 +4,6 @@
 /trainset*
 /testset
 /package-lock.json
-mobilenetClassifier
-model.json
-weights.bin
+models/nnModels/palm_gesture_*
+models/nnModels/palm512softmax
+models/nnModels/palm1024softmax000001

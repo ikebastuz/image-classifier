@@ -63,8 +63,9 @@ async function classifierSaveWrapper(passedClassifier) {
 
 async function loadClassifier(modelName) {
   const classifier = knnClassifier.create();
+  console.log(modelName);
   const loadedModel = await tf.loadModel(
-    `file://./models/nnModels/${modelName}/model.json`
+    `file://models/nnModels/${modelName}/model.json`
   );
   console.log(`loadedModel.layers.length : ${loadedModel.layers.length}`);
 
