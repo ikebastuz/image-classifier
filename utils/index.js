@@ -13,7 +13,7 @@ async function addImageToDataset(imageData) {
   const base64Data = imageData.data.replace(/^data:image\/jpeg;base64,/, '');
 
   await saveImage(
-    `trainset/${imageData.class}_${uuidv1()}.jpg`,
+    `trainset/additional/${imageData.class}_${uuidv1()}.jpg`,
     base64Data,
     'base64'
   );
