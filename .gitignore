@@ -8,3 +8,6 @@ models/nnModels/palm_gesture_*
 models/nnModels/palm1*
 models/nnModels/palm5*
 models/nnModels/palmS*
+models/nnModels/retrained*
+models/nnModels/imagenet*
+models/nnModels/hands-*

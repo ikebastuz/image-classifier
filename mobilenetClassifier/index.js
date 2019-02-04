@@ -23,8 +23,7 @@ class Classifier {
   }
 
   async loadMobileNet() {
-    const mobileNetModelLocal =
-      'file://models/nnModels/mobileNet/mobilenet.json';
+    const mobileNetModelLocal = 'file://models/nnModels/mobileNet/model.json';
     const mobilenet = await tf.loadModel(mobileNetModelLocal);
     const layer = mobilenet.getLayer('conv_pw_13_relu');
     this.mobilenet = tf.model({
@@ -50,6 +49,7 @@ class Classifier {
     for (let i = 0; i < fileNames.length; i++) {
       const canvas = await Utils.processImage(fileNames[i], this.IMAGE_SIZE);
       const normImg = await Utils.normalizeImage(canvas);
+      console.log(normImg);
       this.addExample(normImg, idx);
     }
   }
@@ -88,6 +88,12 @@ class Classifier {
         }),
         tf.layers.dense({
           units: denseUnits / 2,
+          activation: 'relu',
+          kernelInitializer: 'varianceScaling',
+          useBias: true
+        }),
+        tf.layers.dense({
+          units: denseUnits / 4,
           activation: 'relu',
           kernelInitializer: 'varianceScaling',
           useBias: true

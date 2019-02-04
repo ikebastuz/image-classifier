@@ -6,12 +6,12 @@ const { Classifier } = require('../mobilenetClassifier');
   await Classifier.addExamplesPath('trainset/grayscale/gs_0', 0);
   await Classifier.addExamplesPath('trainset/grayscale/gs_1', 1);
 
-  console.log('palmV3_D128_B01_Re-4_E50');
+  console.log('palm3D_D2048_B01_Re-4_E50');
   await Classifier.train({
-    denseUnits: 128,
+    denseUnits: 2048,
     batchSizeFraction: 0.1,
-    learningRate: 0.0001,
+    learningRate: 0.00001,
     epochs: 50
   });
-  await Classifier.saveModel('palmV3_D128_B01_Re-4_E50');
+  await Classifier.saveModel('palm3D_D2048_B01_Re-4_E50');
 })();

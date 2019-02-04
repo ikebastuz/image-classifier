@@ -1,11 +1,11 @@
 import Augmentor
 import shutil
 
-dataPath = "trainset/additional"
+dataPath = "trainset/t0"
 
 p = Augmentor.Pipeline(dataPath)
 
-
+'''
 p.flip_left_right(probability=1)
 p.process()
 
@@ -20,7 +20,10 @@ p.process()
 
 p.zoom(probability=1, min_factor=1.05, max_factor=1.2)
 p.process()
+'''
 
+p.hsv_shifting(probability=1, min_factor=1, max_factor=100)
+p.process()
 
 '''
 p.rotate(probability=0.5, max_left_rotation=10, max_right_rotation=10)

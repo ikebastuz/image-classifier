@@ -27,7 +27,7 @@ class imgClassifier {
 
   async initModel() {
     if (this.mobilenet) this.mobilenet.dispose();
-    const mobileModelPath = 'models/nnModels/mobileNet/mobilenet.json';
+    const mobileModelPath = 'models/nnModels/mobileNet/model.json';
     this.mobilenet = new mobilenetModule.MobileNet(1, 1);
     this.mobilenet.path = `file://${mobileModelPath}`;
     await this.mobilenet.load();
