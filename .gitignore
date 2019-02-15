@@ -11,3 +11,5 @@ models/nnModels/palmS*
 models/nnModels/retrained*
 models/nnModels/imagenet*
 models/nnModels/hands-*
+models/nnModels/gender_*
+models/nnModels/gender-*
